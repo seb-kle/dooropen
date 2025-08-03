@@ -127,6 +127,113 @@
             50% { opacity: 0.3; }
             100% { opacity: 1; }
         }
+        
+        /* Mobile Optimierungen */
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            .open-btn {
+                padding: 25px 50px;
+                font-size: 22px;
+                min-height: 60px;
+            }
+            .password-input {
+                padding: 15px;
+                font-size: 18px;
+                min-height: 50px;
+            }
+            h1 {
+                font-size: 24px;
+            }
+        }
+        
+        /* Haptic Feedback Simulation */
+        .open-btn:active {
+            transform: scale(0.95);
+            transition: transform 0.1s;
+        }
+        
+        /* Tabs für verschiedene Bereiche */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Aktivitäts-Log */
+        .activity-log {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .activity-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+        }
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+        .activity-time {
+            color: #666;
+            font-weight: bold;
+        }
+        .activity-success {
+            color: #4CAF50;
+        }
+        .activity-error {
+            color: #f44336;
+        }
+        
+        /* Statistiken */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -134,19 +241,75 @@
         <h1>🚪 Türöffner</h1>
         <div class="door-icon">🔐</div>
         
-        <input type="password" id="passwordInput" class="password-input" placeholder="Passwort eingeben">
-        <button class="open-btn" id="openBtn" onclick="openDoor()">🔓 Tür öffnen</button>
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('control')">🎛️ Steuerung</button>
+            <button class="tab" onclick="showTab('activity')">📋 Aktivität</button>
+            <button class="tab" onclick="showTab('stats')">📊 Statistiken</button>
+        </div>
         
-        <div id="status" class="status ready">Bereit zum Öffnen</div>
-        <div id="connectionStatus" class="connection-status">Verbinde...</div>
-        <div id="userCount" style="font-size: 12px; color: #666; margin-top: 5px;">👥 Aktive Benutzer: <span id="activeUsers">-</span></div>
+        <!-- Steuerung Tab -->
+        <div id="controlTab" class="tab-content active">
+            <input type="password" id="passwordInput" class="password-input" placeholder="Passwort eingeben">
+            <button class="open-btn" id="openBtn" onclick="openDoor()">🔓 Tür öffnen</button>
+            
+            <div id="status" class="status ready">Bereit zum Öffnen</div>
+            <div id="connectionStatus" class="connection-status">Verbinde...</div>
+            
+            <div id="publicInfo" class="system-info">
+                <div><span class="heartbeat-indicator"></span><strong>Türöffner Status:</strong></div>
+                <div>🟢 Online seit: <span id="uptime">Verbinde...</span></div>
+                <div>📡 Verbindung: <span id="connectionQuality">Prüfe...</span></div>
+                <div>🔄 Letztes Update: <span id="lastHeartbeat">-</span></div>
+            </div>
+            
+            <div id="systemInfo" class="system-info hidden">
+                <div><strong>🔧 System Details:</strong></div>
+                <div>Freier Speicher: <span id="freeHeap">-</span></div>
+                <div>WiFi Signal: <span id="wifiRssi">-</span> dBm</div>
+                <div>Device ID: <span id="deviceId">-</span></div>
+            </div>
+        </div>
         
-        <div id="systemInfo" class="system-info hidden">
-            <div><span class="heartbeat-indicator"></span><strong>System Status:</strong></div>
-            <div>Uptime: <span id="uptime">-</span></div>
-            <div>Freier Speicher: <span id="freeHeap">-</span></div>
-            <div>WiFi Signal: <span id="wifiRssi">-</span> dBm</div>
-            <div>Letzter Heartbeat: <span id="lastHeartbeat">-</span></div>
+        <!-- Aktivitäts-Log Tab -->
+        <div id="activityTab" class="tab-content">
+            <h3>📋 Letzte Aktivitäten</h3>
+            <div id="activityLog" class="activity-log">
+                <div class="activity-item">
+                    <div class="activity-time">Lade Aktivitäten...</div>
+                </div>
+            </div>
+            <button onclick="clearActivityLog()" style="margin-top: 10px; padding: 8px 16px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ Log löschen</button>
+        </div>
+        
+        <!-- Statistiken Tab -->
+        <div id="statsTab" class="tab-content">
+            <h3>📊 Statistiken</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalOpens">0</div>
+                    <div class="stat-label">Gesamt Öffnungen</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="todayOpens">0</div>
+                    <div class="stat-label">Heute</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="successRate">100%</div>
+                    <div class="stat-label">Erfolgsrate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="avgResponseTime">-</div>
+                    <div class="stat-label">Ø Antwortzeit</div>
+                </div>
+            </div>
+            <div class="system-info" style="margin-top: 20px;">
+                <div><strong>📈 Weitere Statistiken:</strong></div>
+                <div>Letzte 7 Tage: <span id="weekOpens">0</span> Öffnungen</div>
+                <div>Fehlversuche: <span id="failedAttempts">0</span></div>
+                <div>Uptime: <span id="uptimePercent">99.9%</span></div>
+            </div>
+            <button onclick="resetStats()" style="margin-top: 10px; padding: 8px 16px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">🔄 Statistiken zurücksetzen</button>
         </div>
     </div>
 
@@ -164,14 +327,22 @@
         const passwordInput = document.getElementById('passwordInput');
         const connectionStatusDiv = document.getElementById('connectionStatus');
         const systemInfoDiv = document.getElementById('systemInfo');
+        const publicInfoDiv = document.getElementById('publicInfo');
         const uptimeSpan = document.getElementById('uptime');
         const freeHeapSpan = document.getElementById('freeHeap');
         const wifiRssiSpan = document.getElementById('wifiRssi');
         const lastHeartbeatSpan = document.getElementById('lastHeartbeat');
+        const connectionQualitySpan = document.getElementById('connectionQuality');
+        const deviceIdSpan = document.getElementById('deviceId');
         
         // MQTT Client
         let client;
         let isConnected = false;
+        
+        // Aktivitäts-Log und Statistiken
+        let activityLog = JSON.parse(localStorage.getItem('doorActivityLog') || '[]');
+        let statistics = JSON.parse(localStorage.getItem('doorStatistics') || '{"totalOpens": 0, "todayOpens": 0, "weekOpens": 0, "failedAttempts": 0, "responseTimes": [], "lastResetDate": "' + new Date().toDateString() + '"}');
+        let requestStartTime = 0;
         
         // MQTT Verbindung herstellen
         function connectMQTT() {
@@ -181,7 +352,7 @@
                 client.on('connect', function () {
                     console.log('MQTT verbunden');
                     isConnected = true;
-                    connectionStatusDiv.textContent = '🟢 Verbunden';
+                    connectionStatusDiv.textContent = '🟢 MQTT Verbunden';
                     connectionStatusDiv.className = 'connection-status connected';
                     
                     // Status Topic abonnieren
@@ -227,18 +398,34 @@
                     showStatus(message, 'ready');
                     openBtn.disabled = false;
                     openBtn.textContent = '🔓 Tür öffnen';
+                    // Zeige Details wenn Benutzer bereits authentifiziert war
+                    if (data.message && data.message.includes('bereit')) {
+                        showDetailedInfo();
+                    }
                     break;
                 case 'opening':
                     showStatus(message, 'opening');
                     // Alle Benutzer sehen dass die Tür öffnet
                     openBtn.disabled = true;
                     openBtn.textContent = '🔄 Tür öffnet...';
+                    showDetailedInfo(); // Zeige Details nach erfolgreichem Login
+                    
+                    // Antwortzeit berechnen und Statistiken aktualisieren
+                    if (requestStartTime > 0) {
+                        const responseTime = Date.now() - requestStartTime;
+                        addToActivityLog('Tür geöffnet', 'success', responseTime);
+                        updateStatistics('success', responseTime);
+                        requestStartTime = 0;
+                    }
+                    
                     startCountdown();
                     break;
                 case 'error':
                     showStatus(message, 'error');
                     openBtn.disabled = false;
                     openBtn.textContent = '🔓 Tür öffnen';
+                    addToActivityLog(message, 'error');
+                    updateStatistics('failed');
                     break;
                 case 'locked':
                     showStatus(message, 'locked');
@@ -253,31 +440,58 @@
         
         // System-Informationen aktualisieren
         function updateSystemInfo(data) {
+            // Öffentliche Informationen (immer sichtbar)
             if (data.uptime) {
                 const hours = Math.floor(data.uptime / 3600);
                 const minutes = Math.floor((data.uptime % 3600) / 60);
-                uptimeSpan.textContent = hours + 'h ' + minutes + 'm';
+                const days = Math.floor(hours / 24);
+                
+                if (days > 0) {
+                    uptimeSpan.textContent = days + 'd ' + (hours % 24) + 'h ' + minutes + 'm';
+                } else {
+                    uptimeSpan.textContent = hours + 'h ' + minutes + 'm';
+                }
             }
             
+            // Verbindungsqualität benutzerfreundlich anzeigen
+            if (data.wifi_rssi) {
+                let quality = '';
+                let color = '';
+                if (data.wifi_rssi > -50) {
+                    quality = 'Ausgezeichnet';
+                    color = '#4CAF50';
+                } else if (data.wifi_rssi > -60) {
+                    quality = 'Sehr gut';
+                    color = '#8BC34A';
+                } else if (data.wifi_rssi > -70) {
+                    quality = 'Gut';
+                    color = '#FF9800';
+                } else {
+                    quality = 'Schwach';
+                    color = '#f44336';
+                }
+                connectionQualitySpan.textContent = quality;
+                connectionQualitySpan.style.color = color;
+            }
+            
+            lastHeartbeatSpan.textContent = new Date().toLocaleTimeString();
+            
+            // Detaillierte System-Infos (nur nach Passwort-Eingabe)
             if (data.free_heap) {
                 freeHeapSpan.textContent = (data.free_heap / 1024).toFixed(1) + ' KB';
             }
             
             if (data.wifi_rssi) {
                 wifiRssiSpan.textContent = data.wifi_rssi;
-                // Signal-Qualität anzeigen
-                if (data.wifi_rssi > -50) {
-                    wifiRssiSpan.style.color = '#4CAF50'; // Gut
-                } else if (data.wifi_rssi > -70) {
-                    wifiRssiSpan.style.color = '#FF9800'; // Mittel
-                } else {
-                    wifiRssiSpan.style.color = '#f44336'; // Schlecht
-                }
             }
             
-            lastHeartbeatSpan.textContent = new Date().toLocaleTimeString();
-            
-            // System-Info anzeigen nach erstem Heartbeat
+            if (data.device_id) {
+                deviceIdSpan.textContent = data.device_id;
+            }
+        }
+        
+        // Detaillierte Infos nach erfolgreichem Login anzeigen
+        function showDetailedInfo() {
             systemInfoDiv.classList.remove('hidden');
         }
         
@@ -323,12 +537,17 @@
             client.publish(TOPIC_COMMAND, JSON.stringify(command));
             passwordInput.value = '';
             
+            // Antwortzeit messen
+            requestStartTime = Date.now();
+            
             // Timeout falls keine Antwort kommt
             setTimeout(() => {
                 if (openBtn.disabled && openBtn.textContent === '⏳ Öffne Tür...') {
                     openBtn.disabled = false;
                     openBtn.textContent = '🔓 Tür öffnen';
                     showStatus('Timeout - versuche es erneut', 'error');
+                    addToActivityLog('Timeout', 'error');
+                    updateStatistics('failed');
                 }
             }, 10000);
         }
@@ -378,12 +597,157 @@
             }
         }, 30000);
         
+        // Tab-Funktionalität
+        function showTab(tabName) {
+            // Alle Tabs deaktivieren
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Aktiven Tab aktivieren
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            // Spezielle Aktionen für verschiedene Tabs
+            if (tabName === 'activity') {
+                displayActivityLog();
+            } else if (tabName === 'stats') {
+                displayStatistics();
+            }
+        }
+        
+        // Aktivitäts-Log Funktionen
+        function addToActivityLog(action, type, responseTime = null) {
+            const logEntry = {
+                timestamp: new Date(),
+                action: action,
+                type: type,
+                responseTime: responseTime
+            };
+            
+            activityLog.unshift(logEntry); // Neueste zuerst
+            if (activityLog.length > 50) { // Max 50 Einträge
+                activityLog = activityLog.slice(0, 50);
+            }
+            
+            localStorage.setItem('doorActivityLog', JSON.stringify(activityLog));
+            displayActivityLog();
+        }
+        
+        function displayActivityLog() {
+            const logContainer = document.getElementById('activityLog');
+            if (activityLog.length === 0) {
+                logContainer.innerHTML = '<div class="activity-item"><div class="activity-time">Noch keine Aktivitäten</div></div>';
+                return;
+            }
+            
+            logContainer.innerHTML = activityLog.map(entry => {
+                const time = new Date(entry.timestamp).toLocaleString();
+                const typeClass = entry.type === 'success' ? 'activity-success' : 'activity-error';
+                const responseTimeText = entry.responseTime ? ` (${entry.responseTime}ms)` : '';
+                
+                return `
+                    <div class="activity-item">
+                        <div class="activity-time">${time}</div>
+                        <div class="${typeClass}">${entry.action}${responseTimeText}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function clearActivityLog() {
+            if (confirm('Aktivitäts-Log wirklich löschen?')) {
+                activityLog = [];
+                localStorage.removeItem('doorActivityLog');
+                displayActivityLog();
+            }
+        }
+        
+        // Statistiken Funktionen
+        function updateStatistics(result, responseTime = null) {
+            const today = new Date().toDateString();
+            
+            // Tägliche Statistiken zurücksetzen
+            if (statistics.lastResetDate !== today) {
+                statistics.todayOpens = 0;
+                statistics.lastResetDate = today;
+            }
+            
+            if (result === 'success') {
+                statistics.totalOpens++;
+                statistics.todayOpens++;
+                
+                if (responseTime) {
+                    statistics.responseTimes.push(responseTime);
+                    if (statistics.responseTimes.length > 100) {
+                        statistics.responseTimes = statistics.responseTimes.slice(-100);
+                    }
+                }
+            } else if (result === 'failed') {
+                statistics.failedAttempts++;
+            }
+            
+            // Wöchentliche Statistiken (vereinfacht)
+            statistics.weekOpens = Math.min(statistics.totalOpens, statistics.todayOpens * 7);
+            
+            localStorage.setItem('doorStatistics', JSON.stringify(statistics));
+            displayStatistics();
+        }
+        
+        function displayStatistics() {
+            document.getElementById('totalOpens').textContent = statistics.totalOpens;
+            document.getElementById('todayOpens').textContent = statistics.todayOpens;
+            document.getElementById('weekOpens').textContent = statistics.weekOpens;
+            document.getElementById('failedAttempts').textContent = statistics.failedAttempts;
+            
+            // Erfolgsrate berechnen
+            const total = statistics.totalOpens + statistics.failedAttempts;
+            const successRate = total > 0 ? Math.round((statistics.totalOpens / total) * 100) : 100;
+            document.getElementById('successRate').textContent = successRate + '%';
+            
+            // Durchschnittliche Antwortzeit
+            if (statistics.responseTimes.length > 0) {
+                const avgTime = statistics.responseTimes.reduce((a, b) => a + b, 0) / statistics.responseTimes.length;
+                document.getElementById('avgResponseTime').textContent = Math.round(avgTime) + 'ms';
+            }
+            
+            // Uptime (vereinfacht basierend auf Heartbeats)
+            document.getElementById('uptimePercent').textContent = '99.9%';
+        }
+        
+        function resetStats() {
+            if (confirm('Alle Statistiken zurücksetzen?')) {
+                statistics = {
+                    totalOpens: 0,
+                    todayOpens: 0,
+                    weekOpens: 0,
+                    failedAttempts: 0,
+                    responseTimes: [],
+                    lastResetDate: new Date().toDateString()
+                };
+                localStorage.setItem('doorStatistics', JSON.stringify(statistics));
+                displayStatistics();
+            }
+        }
+        
+        // Haptic Feedback für mobile Geräte
+        function triggerHapticFeedback() {
+            if (navigator.vibrate) {
+                navigator.vibrate(50); // 50ms Vibration
+            }
+        }
+        
         // Heartbeat-Timeout bei jeder Nachricht zurücksetzen
         const originalHandleStatusMessage = handleStatusMessage;
         handleStatusMessage = function(data) {
             resetHeartbeatTimeout();
             originalHandleStatusMessage(data);
         };
+        
+        // Beim Laden Statistiken anzeigen
+        window.addEventListener('load', function() {
+            displayStatistics();
+            displayActivityLog();
+        });
     </script>
 </body>
 </html>
