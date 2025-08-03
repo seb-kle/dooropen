@@ -139,6 +139,7 @@
         
         <div id="status" class="status ready">Bereit zum Öffnen</div>
         <div id="connectionStatus" class="connection-status">Verbinde...</div>
+        <div id="userCount" style="font-size: 12px; color: #666; margin-top: 5px;">👥 Aktive Benutzer: <span id="activeUsers">-</span></div>
         
         <div id="systemInfo" class="system-info hidden">
             <div><span class="heartbeat-indicator"></span><strong>System Status:</strong></div>
@@ -229,6 +230,9 @@
                     break;
                 case 'opening':
                     showStatus(message, 'opening');
+                    // Alle Benutzer sehen dass die Tür öffnet
+                    openBtn.disabled = true;
+                    openBtn.textContent = '🔄 Tür öffnet...';
                     startCountdown();
                     break;
                 case 'error':
@@ -238,8 +242,8 @@
                     break;
                 case 'locked':
                     showStatus(message, 'locked');
-                    openBtn.disabled = false;
-                    openBtn.textContent = '🔓 Tür öffnen';
+                    openBtn.disabled = true; // Alle Benutzer gesperrt
+                    openBtn.textContent = '🔒 Gesperrt';
                     break;
                 case 'heartbeat':
                     updateSystemInfo(data);
@@ -298,19 +302,35 @@
                 return;
             }
             
+            // Prüfen ob bereits jemand die Tür öffnet
+            if (openBtn.disabled) {
+                showStatus('Tür wird bereits von einem anderen Benutzer geöffnet...', 'error');
+                return;
+            }
+            
             // Button deaktivieren
             openBtn.disabled = true;
             openBtn.textContent = '⏳ Öffne Tür...';
             
-            // MQTT Nachricht senden
+            // MQTT Nachricht mit User-ID senden
             const command = {
                 command: 'open',
                 password: password,
+                user_id: 'User_' + Math.random().toString(36).substr(2, 9),
                 timestamp: Date.now()
             };
             
             client.publish(TOPIC_COMMAND, JSON.stringify(command));
             passwordInput.value = '';
+            
+            // Timeout falls keine Antwort kommt
+            setTimeout(() => {
+                if (openBtn.disabled && openBtn.textContent === '⏳ Öffne Tür...') {
+                    openBtn.disabled = false;
+                    openBtn.textContent = '🔓 Tür öffnen';
+                    showStatus('Timeout - versuche es erneut', 'error');
+                }
+            }, 10000);
         }
         
         // Status anzeigen
