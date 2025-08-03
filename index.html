@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Türöffner - MQTT</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            max-width: 400px;
+            background-color: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .door-icon {
+            font-size: 80px;
+            margin: 20px 0;
+        }
+        .password-input {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+        .password-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        .open-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: bold;
+            width: 100%;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+        .open-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+        }
+        .open-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .status.ready {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+        }
+        .status.opening {
+            background-color: #fff3e0;
+            color: #f57c00;
+        }
+        .status.error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .status.locked {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .connection-status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+        .connection-status.connected {
+            color: #4CAF50;
+        }
+        .connection-status.disconnected {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚪 Türöffner</h1>
+        <div class="door-icon">🔐</div>
+        
+        <input type="password" id="passwordInput" class="password-input" placeholder="Passwort eingeben">
+        <button class="open-btn" id="openBtn" onclick="openDoor()">🔓 Tür öffnen</button>
+        
+        <div id="status" class="status ready">Bereit zum Öffnen</div>
+        <div id="connectionStatus" class="connection-status">Verbinde...</div>
+    </div>
+
+    <!-- MQTT über WebSocket -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script>
+        // MQTT Konfiguration
+        const MQTT_BROKER = 'wss://broker.hivemq.com:8884/mqtt';
+        const TOPIC_COMMAND = 'tueroeffner/command';
+        const TOPIC_STATUS = 'tueroeffner/status';
+        
+        // UI Elemente
+        const openBtn = document.getElementById('openBtn');
+        const statusDiv = document.getElementById('status');
+        const passwordInput = document.getElementById('passwordInput');
+        const connectionStatusDiv = document.getElementById('connectionStatus');
+        
+        // MQTT Client
+        let client;
+        let isConnected = false;
+        
+        // MQTT Verbindung herstellen
+        function connectMQTT() {
+            try {
+                client = mqtt.connect(MQTT_BROKER);
+                
+                client.on('connect', function () {
+                    console.log('MQTT verbunden');
+                    isConnected = true;
+                    connectionStatusDiv.textContent = '🟢 Verbunden';
+                    connectionStatusDiv.className = 'connection-status connected';
+                    
+                    // Status Topic abonnieren
+                    client.subscribe(TOPIC_STATUS);
+                });
+                
+                client.on('message', function (topic, message) {
+                    if (topic === TOPIC_STATUS) {
+                        handleStatusMessage(JSON.parse(message.toString()));
+                    }
+                });
+                
+                client.on('error', function (error) {
+                    console.error('MQTT Fehler:', error);
+                    isConnected = false;
+                    connectionStatusDiv.textContent = '🔴 Verbindungsfehler';
+                    connectionStatusDiv.className = 'connection-status disconnected';
+                });
+                
+                client.on('close', function () {
+                    console.log('MQTT Verbindung geschlossen');
+                    isConnected = false;
+                    connectionStatusDiv.textContent = '🔴 Getrennt';
+                    connectionStatusDiv.className = 'connection-status disconnected';
+                });
+                
+            } catch (error) {
+                console.error('MQTT Verbindung fehlgeschlagen:', error);
+                connectionStatusDiv.textContent = '🔴 Verbindung fehlgeschlagen';
+                connectionStatusDiv.className = 'connection-status disconnected';
+            }
+        }
+        
+        // Status-Nachrichten vom ESP32 verarbeiten
+        function handleStatusMessage(data) {
+            console.log('Status empfangen:', data);
+            
+            const status = data.status;
+            const message = data.message;
+            
+            switch (status) {
+                case 'ready':
+                    showStatus(message, 'ready');
+                    openBtn.disabled = false;
+                    openBtn.textContent = '🔓 Tür öffnen';
+                    break;
+                case 'opening':
+                    showStatus(message, 'opening');
+                    startCountdown();
+                    break;
+                case 'error':
+                    showStatus(message, 'error');
+                    openBtn.disabled = false;
+                    openBtn.textContent = '🔓 Tür öffnen';
+                    break;
+                case 'locked':
+                    showStatus(message, 'locked');
+                    openBtn.disabled = false;
+                    openBtn.textContent = '🔓 Tür öffnen';
+                    break;
+            }
+        }
+        
+        // Enter-Taste unterstützen
+        passwordInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                openDoor();
+            }
+        });
+        
+        // Tür öffnen
+        function openDoor() {
+            const password = passwordInput.value;
+            
+            if (!password) {
+                showStatus('Bitte Passwort eingeben!', 'error');
+                return;
+            }
+            
+            if (!isConnected) {
+                showStatus('Keine Verbindung zum Türöffner!', 'error');
+                return;
+            }
+            
+            // Button deaktivieren
+            openBtn.disabled = true;
+            openBtn.textContent = '⏳ Öffne Tür...';
+            
+            // MQTT Nachricht senden
+            const command = {
+                command: 'open',
+                password: password,
+                timestamp: Date.now()
+            };
+            
+            client.publish(TOPIC_COMMAND, JSON.stringify(command));
+            passwordInput.value = '';
+        }
+        
+        // Status anzeigen
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + type;
+        }
+        
+        // Countdown für Türschließung
+        function startCountdown() {
+            let seconds = 3;
+            const countdownInterval = setInterval(() => {
+                if (seconds > 0) {
+                    showStatus('Tür schließt in ' + seconds + ' Sekunden...', 'opening');
+                    seconds--;
+                } else {
+                    clearInterval(countdownInterval);
+                    // Status wird vom ESP32 gesendet
+                }
+            }, 1000);
+        }
+        
+        // Beim Laden der Seite
+        window.onload = function() {
+            passwordInput.focus();
+            connectMQTT();
+        };
+        
+        // Verbindung alle 30 Sekunden prüfen
+        setInterval(() => {
+            if (!isConnected) {
+                connectMQTT();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
