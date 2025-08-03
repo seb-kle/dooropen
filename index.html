@@ -102,6 +102,31 @@
         .connection-status.disconnected {
             color: #f44336;
         }
+        .system-info {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+        .system-info.hidden {
+            display: none;
+        }
+        .heartbeat-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -114,6 +139,14 @@
         
         <div id="status" class="status ready">Bereit zum Öffnen</div>
         <div id="connectionStatus" class="connection-status">Verbinde...</div>
+        
+        <div id="systemInfo" class="system-info hidden">
+            <div><span class="heartbeat-indicator"></span><strong>System Status:</strong></div>
+            <div>Uptime: <span id="uptime">-</span></div>
+            <div>Freier Speicher: <span id="freeHeap">-</span></div>
+            <div>WiFi Signal: <span id="wifiRssi">-</span> dBm</div>
+            <div>Letzter Heartbeat: <span id="lastHeartbeat">-</span></div>
+        </div>
     </div>
 
     <!-- MQTT über WebSocket -->
@@ -129,6 +162,11 @@
         const statusDiv = document.getElementById('status');
         const passwordInput = document.getElementById('passwordInput');
         const connectionStatusDiv = document.getElementById('connectionStatus');
+        const systemInfoDiv = document.getElementById('systemInfo');
+        const uptimeSpan = document.getElementById('uptime');
+        const freeHeapSpan = document.getElementById('freeHeap');
+        const wifiRssiSpan = document.getElementById('wifiRssi');
+        const lastHeartbeatSpan = document.getElementById('lastHeartbeat');
         
         // MQTT Client
         let client;
@@ -203,7 +241,40 @@
                     openBtn.disabled = false;
                     openBtn.textContent = '🔓 Tür öffnen';
                     break;
+                case 'heartbeat':
+                    updateSystemInfo(data);
+                    break;
             }
+        }
+        
+        // System-Informationen aktualisieren
+        function updateSystemInfo(data) {
+            if (data.uptime) {
+                const hours = Math.floor(data.uptime / 3600);
+                const minutes = Math.floor((data.uptime % 3600) / 60);
+                uptimeSpan.textContent = hours + 'h ' + minutes + 'm';
+            }
+            
+            if (data.free_heap) {
+                freeHeapSpan.textContent = (data.free_heap / 1024).toFixed(1) + ' KB';
+            }
+            
+            if (data.wifi_rssi) {
+                wifiRssiSpan.textContent = data.wifi_rssi;
+                // Signal-Qualität anzeigen
+                if (data.wifi_rssi > -50) {
+                    wifiRssiSpan.style.color = '#4CAF50'; // Gut
+                } else if (data.wifi_rssi > -70) {
+                    wifiRssiSpan.style.color = '#FF9800'; // Mittel
+                } else {
+                    wifiRssiSpan.style.color = '#f44336'; // Schlecht
+                }
+            }
+            
+            lastHeartbeatSpan.textContent = new Date().toLocaleTimeString();
+            
+            // System-Info anzeigen nach erstem Heartbeat
+            systemInfoDiv.classList.remove('hidden');
         }
         
         // Enter-Taste unterstützen
@@ -262,10 +333,22 @@
             }, 1000);
         }
         
+        // Heartbeat-Timeout überwachen
+        let heartbeatTimeout;
+        function resetHeartbeatTimeout() {
+            clearTimeout(heartbeatTimeout);
+            heartbeatTimeout = setTimeout(() => {
+                showStatus('Keine Verbindung zum Türöffner (Heartbeat fehlt)', 'error');
+                connectionStatusDiv.textContent = '🔴 Türöffner offline';
+                connectionStatusDiv.className = 'connection-status disconnected';
+            }, 120000); // 2 Minuten ohne Heartbeat = offline
+        }
+        
         // Beim Laden der Seite
         window.onload = function() {
             passwordInput.focus();
             connectMQTT();
+            resetHeartbeatTimeout();
         };
         
         // Verbindung alle 30 Sekunden prüfen
@@ -274,6 +357,13 @@
                 connectMQTT();
             }
         }, 30000);
+        
+        // Heartbeat-Timeout bei jeder Nachricht zurücksetzen
+        const originalHandleStatusMessage = handleStatusMessage;
+        handleStatusMessage = function(data) {
+            resetHeartbeatTimeout();
+            originalHandleStatusMessage(data);
+        };
     </script>
 </body>
 </html>
