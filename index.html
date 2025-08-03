@@ -243,9 +243,9 @@
         
         <!-- Tabs -->
         <div class="tabs">
-            <button class="tab active" onclick="showTab('control')">🎛️ Steuerung</button>
-            <button class="tab" onclick="showTab('activity')">📋 Aktivität</button>
-            <button class="tab" onclick="showTab('stats')">📊 Statistiken</button>
+            <button class="tab active" onclick="showTab('control', this)">🎛️ Steuerung</button>
+            <button class="tab" onclick="showTab('activity', this)">📋 Aktivität</button>
+            <button class="tab" onclick="showTab('stats', this)">📊 Statistiken</button>
         </div>
         
         <!-- Steuerung Tab -->
@@ -341,7 +341,17 @@
         
         // Aktivitäts-Log und Statistiken
         let activityLog = JSON.parse(localStorage.getItem('doorActivityLog') || '[]');
-        let statistics = JSON.parse(localStorage.getItem('doorStatistics') || '{"totalOpens": 0, "todayOpens": 0, "weekOpens": 0, "failedAttempts": 0, "responseTimes": [], "lastResetDate": "' + new Date().toDateString() + '"}');
+        let statistics = JSON.parse(localStorage.getItem('doorStatistics') || '{}');
+        if (!statistics.totalOpens) {
+            statistics = {
+                totalOpens: 0,
+                todayOpens: 0,
+                weekOpens: 0,
+                failedAttempts: 0,
+                responseTimes: [],
+                lastResetDate: new Date().toDateString()
+            };
+        }
         let requestStartTime = 0;
         
         // MQTT Verbindung herstellen
@@ -588,6 +598,8 @@
             passwordInput.focus();
             connectMQTT();
             resetHeartbeatTimeout();
+            displayStatistics();
+            displayActivityLog();
         };
         
         // Verbindung alle 30 Sekunden prüfen
@@ -598,20 +610,25 @@
         }, 30000);
         
         // Tab-Funktionalität
-        function showTab(tabName) {
+        function showTab(tabName, element) {
             // Alle Tabs deaktivieren
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
             // Aktiven Tab aktivieren
-            event.target.classList.add('active');
+            if (element) {
+                element.classList.add('active');
+            } else {
+                // Fallback: Tab anhand des Namens finden
+                document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+            }
             document.getElementById(tabName + 'Tab').classList.add('active');
             
             // Spezielle Aktionen für verschiedene Tabs
             if (tabName === 'activity') {
-                displayActivityLog();
+                setTimeout(displayActivityLog, 100);
             } else if (tabName === 'stats') {
-                displayStatistics();
+                setTimeout(displayStatistics, 100);
             }
         }
         
@@ -630,7 +647,9 @@
             }
             
             localStorage.setItem('doorActivityLog', JSON.stringify(activityLog));
-            displayActivityLog();
+            if (document.getElementById('activityTab').classList.contains('active')) {
+                displayActivityLog();
+            }
         }
         
         function displayActivityLog() {
@@ -690,7 +709,9 @@
             statistics.weekOpens = Math.min(statistics.totalOpens, statistics.todayOpens * 7);
             
             localStorage.setItem('doorStatistics', JSON.stringify(statistics));
-            displayStatistics();
+            if (document.getElementById('statsTab').classList.contains('active')) {
+                displayStatistics();
+            }
         }
         
         function displayStatistics() {
@@ -743,10 +764,12 @@
             originalHandleStatusMessage(data);
         };
         
-        // Beim Laden Statistiken anzeigen
-        window.addEventListener('load', function() {
-            displayStatistics();
-            displayActivityLog();
+        // Haptic Feedback beim Button-Klick hinzufügen
+        document.addEventListener('DOMContentLoaded', function() {
+            const openButton = document.getElementById('openBtn');
+            if (openButton) {
+                openButton.addEventListener('click', triggerHapticFeedback);
+            }
         });
     </script>
 </body>
